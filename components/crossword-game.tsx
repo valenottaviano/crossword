@@ -66,8 +66,20 @@ export default function CrosswordGame() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showLoginWarning, setShowLoginWarning] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[][]>([]);
   const supabase = createClient();
+
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+  }, []);
 
   useEffect(() => {
     fetchCrossword(date);
@@ -170,7 +182,16 @@ export default function CrosswordGame() {
     }
   };
 
+  const handleStartClick = () => {
+    if (user) {
+      handleStartGame();
+    } else {
+      setShowLoginWarning(true);
+    }
+  };
+
   const handleStartGame = () => {
+    setShowLoginWarning(false);
     setHasStarted(true);
     setStartTime(Date.now());
     // Focus the selected cell
@@ -553,7 +574,7 @@ export default function CrosswordGame() {
                 </p>
                 <Button
                   size="lg"
-                  onClick={handleStartGame}
+                  onClick={handleStartClick}
                   className="w-full font-bold text-lg"
                 >
                   Jugar
@@ -729,6 +750,30 @@ export default function CrosswordGame() {
               className="w-full sm:w-auto"
             >
               Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showLoginWarning} onOpenChange={setShowLoginWarning}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>¿Jugar sin cuenta?</DialogTitle>
+            <DialogDescription>
+              Si juegas sin iniciar sesión, tu tiempo no se guardará en el
+              ranking diario ni podrás competir con amigos.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-col gap-2">
+            <Button className="w-full" asChild>
+              <a href="/login">Iniciar Sesión / Crear Cuenta</a>
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={handleStartGame}
+            >
+              Jugar de todos modos
             </Button>
           </DialogFooter>
         </DialogContent>
