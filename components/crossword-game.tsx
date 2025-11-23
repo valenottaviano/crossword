@@ -591,9 +591,9 @@ export default function CrosswordGame() {
           </div>
 
           {/* Clues */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-            <Card className="flex flex-col border-none shadow-none bg-transparent">
-              <CardHeader className="py-2 px-0">
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full ">
+            <Card className="flex flex-col border-none shadow-none bg-transparent pt-0">
+              <CardHeader className=" px-0">
                 <CardTitle className="text-sm font-bold uppercase text-muted-foreground">
                   Horizontales
                 </CardTitle>
@@ -629,8 +629,8 @@ export default function CrosswordGame() {
               </ScrollArea>
             </Card>
 
-            <Card className="flex flex-col border-none shadow-none bg-transparent">
-              <CardHeader className="py-2 px-0">
+            <Card className="flex flex-col border-none shadow-none bg-transparent pt-0">
+              <CardHeader className=" px-0">
                 <CardTitle className="text-sm font-bold uppercase text-muted-foreground">
                   Verticales
                 </CardTitle>
