@@ -106,7 +106,7 @@ export default function CrosswordGame() {
   };
 
   useEffect(() => {
-    if (!data || isCompleted || grid.length === 0) return;
+    if (loading || !data || isCompleted || grid.length === 0) return;
 
     const { solution } = data.ipuzData;
     let isCorrect = true;
@@ -163,6 +163,8 @@ export default function CrosswordGame() {
     setHasStarted(false);
     setStartTime(null);
     setElapsedTime(0);
+    setData(null);
+    setGrid([]);
     try {
       const res = await fetch(`/api/crossword?date=${dateStr}`);
       if (!res.ok) throw new Error("Failed to fetch");
