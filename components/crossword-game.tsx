@@ -62,6 +62,7 @@ export default function CrosswordGame() {
     new Date().toISOString().split("T")[0]
   );
   const [isCompleted, setIsCompleted] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -146,6 +147,7 @@ export default function CrosswordGame() {
   const fetchCrossword = async (dateStr: string) => {
     setLoading(true);
     setIsCompleted(false);
+    setHasStarted(false);
     setStartTime(null);
     setElapsedTime(0);
     try {
@@ -160,11 +162,20 @@ export default function CrosswordGame() {
 
       setData(json);
       initializeGrid(json);
-      setStartTime(Date.now());
+      // Timer starts when user clicks "Jugar"
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStartGame = () => {
+    setHasStarted(true);
+    setStartTime(Date.now());
+    // Focus the selected cell
+    if (selectedCell && inputRefs.current[selectedCell.r]?.[selectedCell.c]) {
+      inputRefs.current[selectedCell.r][selectedCell.c]?.focus();
     }
   };
 
@@ -510,7 +521,11 @@ export default function CrosswordGame() {
 
       <Card className="w-full mb-6">
         <CardContent className="p-4 flex items-center justify-center min-h-16 bg-blue-50 text-center font-medium">
-          {currentClue ? (
+          {!hasStarted ? (
+            <span className="text-muted-foreground italic">
+              Inicia el juego para ver las pistas
+            </span>
+          ) : currentClue ? (
             <span className="text-lg">
               <span className="font-bold mr-2">
                 {currentClue.number}{" "}
@@ -528,7 +543,25 @@ export default function CrosswordGame() {
 
       <div className="flex flex-col xl:flex-row gap-8 w-full items-start">
         {/* Main Game Area */}
-        <div className="flex-1 flex flex-col lg:flex-row gap-8 w-full min-w-0">
+        <div className="flex-1 flex flex-col lg:flex-row gap-8 w-full min-w-0 relative">
+          {!hasStarted && (
+            <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center rounded-lg border border-neutral-200">
+              <div className="text-center p-8 bg-white shadow-lg rounded-xl border border-neutral-100 max-w-sm mx-4">
+                <h2 className="text-2xl font-bold mb-2">Crucigrama Diario</h2>
+                <p className="text-muted-foreground mb-6">
+                  ¿Listo para desafiar tu mente hoy?
+                </p>
+                <Button
+                  size="lg"
+                  onClick={handleStartGame}
+                  className="w-full font-bold text-lg"
+                >
+                  Jugar
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Grid */}
           <div className="w-full lg:w-auto flex justify-center overflow-x-auto pb-4 lg:pb-0 shrink-0">
             <div
