@@ -24,6 +24,7 @@ import {
 import confetti from "canvas-confetti";
 import { createClient } from "@/lib/supabase/client";
 import FriendsSidebar from "@/components/friends-sidebar";
+import { VirtualKeyboard } from "@/components/virtual-keyboard";
 
 type ClueDetail = {
   clue: string;
@@ -108,21 +109,21 @@ export default function CrosswordGame() {
     if (!data || isCompleted || grid.length === 0) return;
 
     const { solution } = data.ipuzData;
-    let correct = true;
+    let isCorrect = true;
 
     for (let r = 0; r < grid.length; r++) {
       for (let c = 0; c < grid[0].length; c++) {
         if (data.ipuzData.puzzle[r][c] !== "#") {
           if (grid[r][c] !== solution[r][c]) {
-            correct = false;
+            isCorrect = false;
             break;
           }
         }
       }
-      if (!correct) break;
+      if (!isCorrect) break;
     }
 
-    if (correct) {
+    if (isCorrect) {
       setIsCompleted(true);
       setShowSuccessDialog(true);
       saveResult(elapsedTime);
@@ -300,20 +301,10 @@ export default function CrosswordGame() {
 
     if (e.key === "Backspace") {
       e.preventDefault();
-      const newGrid = [...grid];
-      if (newGrid[r][c] !== "") {
-        newGrid[r][c] = "";
-        setGrid(newGrid);
-      } else {
-        // Move back
-        moveSelection(-1);
-      }
+      handleVirtualKey("BACKSPACE");
     } else if (e.key.length === 1 && e.key.match(/[a-zA-Z]/)) {
       e.preventDefault();
-      const newGrid = [...grid];
-      newGrid[r][c] = e.key.toUpperCase();
-      setGrid(newGrid);
-      moveSelection(1);
+      handleVirtualKey(e.key.toUpperCase());
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
       if (direction === "down") setDirection("across");
@@ -332,7 +323,68 @@ export default function CrosswordGame() {
       else moveCell(-1, 0);
     } else if (e.key === "Tab") {
       e.preventDefault();
-      // Logic to jump to next clue could go here
+      handleVirtualKey("TAB");
+    }
+  };
+
+  const handleVirtualKey = (key: string) => {
+    if (!selectedCell || !data) return;
+    const { r, c } = selectedCell;
+
+    if (key === "BACKSPACE") {
+      const newGrid = [...grid];
+      if (newGrid[r][c] !== "") {
+        newGrid[r][c] = "";
+        setGrid(newGrid);
+      } else {
+        moveSelection(-1);
+      }
+    } else if (key === "TAB") {
+      // Logic to jump to next clue
+      // For now, just toggle direction as a simple placeholder or implement next clue logic
+      // Let's implement a simple next clue finder
+      // Or just do nothing for now if not requested
+    } else if (key.length === 1) {
+      const newGrid = [...grid];
+      newGrid[r][c] = key;
+      setGrid(newGrid);
+      moveSelection(1);
+    }
+  };
+
+  const handlePrevClue = () => {
+    // Logic to go to previous clue
+    // This requires finding the previous clue number and selecting its first cell
+    // Simplified: just move selection back until a new clue starts?
+    // Or iterate through clues keys.
+    if (!data || !currentClue) return;
+    const clues =
+      direction === "across"
+        ? data.ipuzData.clues.Across
+        : data.ipuzData.clues.Down;
+    const currentIndex = clues.findIndex(
+      ([num]) => String(num) === currentClue.number
+    );
+    if (currentIndex > 0) {
+      const [prevNum] = clues[currentIndex - 1];
+      const detail = data.ipuzData.fromIpuz?.[direction][prevNum];
+      if (detail) setSelectedCell({ r: detail.row, c: detail.col });
+    }
+  };
+
+  const handleNextClue = () => {
+    if (!data || !currentClue) return;
+    const clues =
+      direction === "across"
+        ? data.ipuzData.clues.Across
+        : data.ipuzData.clues.Down;
+    const currentIndex = clues.findIndex(
+      ([num]) => String(num) === currentClue.number
+    );
+    if (currentIndex < clues.length - 1) {
+      const [nextNum] = clues[currentIndex + 1];
+      const detail = data.ipuzData.fromIpuz?.[direction][nextNum];
+      if (detail) setSelectedCell({ r: detail.row, c: detail.col });
     }
   };
 
@@ -414,11 +466,11 @@ export default function CrosswordGame() {
 
       if (direction === "across") {
         if (row === r && c >= col && c < col + len) {
-          return { number: num, text: detail.clue };
+          return { number: num, text: detail.clue, direction };
         }
       } else {
         if (col === c && r >= row && r < row + len) {
-          return { number: num, text: detail.clue };
+          return { number: num, text: detail.clue, direction };
         }
       }
     }
@@ -631,6 +683,7 @@ export default function CrosswordGame() {
                               onChange={() => {}} // Handled by onKeyDown
                               onKeyDown={(e) => handleKeyDown(e, r, c)}
                               autoFocus
+                              inputMode="none"
                             />
                           ) : (
                             <span>{grid[r][c]}</span>
@@ -778,6 +831,16 @@ export default function CrosswordGame() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Virtual Keyboard - Only visible on mobile/tablet via CSS media queries or always if preferred */}
+      <div className="lg:hidden">
+        <VirtualKeyboard
+          onKey={handleVirtualKey}
+          currentClue={currentClue}
+          onPrevClue={handlePrevClue}
+          onNextClue={handleNextClue}
+        />
+      </div>
     </div>
   );
 }
