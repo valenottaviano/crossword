@@ -781,6 +781,9 @@ export default function CrosswordGame() {
         </div>
       </div>
 
+      {/* Spacer for Virtual Keyboard on Mobile */}
+      {hasStarted && <div className="h-[300px] lg:hidden" />}
+
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
