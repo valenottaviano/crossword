@@ -833,14 +833,16 @@ export default function CrosswordGame() {
       </Dialog>
 
       {/* Virtual Keyboard - Only visible on mobile/tablet via CSS media queries or always if preferred */}
-      <div className="lg:hidden">
-        <VirtualKeyboard
-          onKey={handleVirtualKey}
-          currentClue={currentClue}
-          onPrevClue={handlePrevClue}
-          onNextClue={handleNextClue}
-        />
-      </div>
+      {hasStarted && (
+        <div className="lg:hidden">
+          <VirtualKeyboard
+            onKey={handleVirtualKey}
+            currentClue={currentClue}
+            onPrevClue={handlePrevClue}
+            onNextClue={handleNextClue}
+          />
+        </div>
+      )}
     </div>
   );
 }
