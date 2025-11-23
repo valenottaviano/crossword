@@ -22,6 +22,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import confetti from "canvas-confetti";
+import { createClient } from "@/lib/supabase/client";
+import FriendsSidebar from "@/components/friends-sidebar";
 
 type ClueDetail = {
   clue: string;
@@ -64,6 +66,7 @@ export default function CrosswordGame() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[][]>([]);
+  const supabase = createClient();
 
   useEffect(() => {
     fetchCrossword(date);
@@ -74,6 +77,19 @@ export default function CrosswordGame() {
       inputRefs.current[selectedCell.r][selectedCell.c]?.focus();
     }
   }, [selectedCell]);
+
+  const saveResult = async (time: number) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase.from("game_results").insert({
+      user_id: user.id,
+      date: date,
+      time_seconds: time,
+    });
+  };
 
   useEffect(() => {
     if (!data || isCompleted || grid.length === 0) return;
@@ -96,13 +112,14 @@ export default function CrosswordGame() {
     if (correct) {
       setIsCompleted(true);
       setShowSuccessDialog(true);
+      saveResult(elapsedTime);
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
       });
     }
-  }, [grid, data, isCompleted, startTime]);
+  }, [grid, data, isCompleted, startTime, elapsedTime]);
 
   useEffect(() => {
     if (!startTime || isCompleted) return;
@@ -445,7 +462,7 @@ export default function CrosswordGame() {
   if (!data) return <div>Error loading crossword</div>;
 
   return (
-    <div className="flex flex-col items-center p-2 sm:p-4 max-w-4xl mx-auto w-full">
+    <div className="flex flex-col items-center p-2 sm:p-4 max-w-[1600px] mx-auto w-full">
       <div className="flex flex-col sm:flex-row justify-between w-full items-center mb-4 gap-3 sm:gap-0">
         <div className="flex items-center gap-4">
           <h1 className="text-xl sm:text-2xl font-bold">Crucigrama Diario</h1>
@@ -509,143 +526,151 @@ export default function CrosswordGame() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col lg:flex-row gap-6 sm:gap-8 w-full items-start">
-        {/* Grid */}
-        <div className="w-full lg:w-auto flex justify-center overflow-x-auto pb-4 lg:pb-0">
-          <div
-            className="grid bg-neutral-200 border border-neutral-200 shadow-sm mx-auto"
-            style={{
-              gridTemplateColumns: `repeat(${data.ipuzData.dimensions.width}, max-content)`,
-              gridTemplateRows: `repeat(${data.ipuzData.dimensions.height}, max-content)`,
-              width: "fit-content",
-              height: "fit-content",
-              gap: "1px",
-            }}
-          >
-            {data.ipuzData.puzzle.map((row, r) =>
-              row.map((cell, c) => {
-                const isBlock = cell === "#";
-                const cellNumber = typeof cell === "number" ? cell : null;
-                const isSelected =
-                  selectedCell?.r === r && selectedCell?.c === c;
-                const isWordHighlighted = !isBlock && isHighlighted(r, c);
+      <div className="flex flex-col xl:flex-row gap-8 w-full items-start">
+        {/* Main Game Area */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-8 w-full min-w-0">
+          {/* Grid */}
+          <div className="w-full lg:w-auto flex justify-center overflow-x-auto pb-4 lg:pb-0 shrink-0">
+            <div
+              className="grid bg-neutral-200 border border-neutral-200 shadow-sm mx-auto"
+              style={{
+                gridTemplateColumns: `repeat(${data.ipuzData.dimensions.width}, max-content)`,
+                gridTemplateRows: `repeat(${data.ipuzData.dimensions.height}, max-content)`,
+                width: "fit-content",
+                height: "fit-content",
+                gap: "1px",
+              }}
+            >
+              {data.ipuzData.puzzle.map((row, r) =>
+                row.map((cell, c) => {
+                  const isBlock = cell === "#";
+                  const cellNumber = typeof cell === "number" ? cell : null;
+                  const isSelected =
+                    selectedCell?.r === r && selectedCell?.c === c;
+                  const isWordHighlighted = !isBlock && isHighlighted(r, c);
 
-                return (
-                  <div
-                    key={`${r}-${c}`}
-                    className={cn(
-                      "relative w-7 sm:w-10 aspect-square flex items-center justify-center text-base sm:text-lg font-bold uppercase select-none cursor-pointer transition-colors duration-150",
-                      isBlock ? "bg-neutral-900" : "bg-white",
-                      isWordHighlighted && !isSelected && "bg-blue-50",
-                      isSelected && "bg-yellow-100"
-                    )}
-                    onClick={() => handleCellClick(r, c)}
-                  >
-                    {!isBlock && (
-                      <>
-                        {cellNumber && (
-                          <span className="absolute top-0.5 left-0.5 text-[6px] sm:text-[10px] leading-none font-normal text-gray-500">
-                            {cellNumber}
-                          </span>
-                        )}
-                        {isSelected ? (
-                          <input
-                            ref={(el) => {
-                              inputRefs.current[r][c] = el;
-                            }}
-                            className="w-full h-full text-center bg-transparent outline-none p-0 m-0 border-none"
-                            value={grid[r][c]}
-                            onChange={() => {}} // Handled by onKeyDown
-                            onKeyDown={(e) => handleKeyDown(e, r, c)}
-                            autoFocus
-                          />
-                        ) : (
-                          <span>{grid[r][c]}</span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                );
-              })
-            )}
+                  return (
+                    <div
+                      key={`${r}-${c}`}
+                      className={cn(
+                        "relative w-7 sm:w-10 aspect-square flex items-center justify-center text-base sm:text-lg font-bold uppercase select-none cursor-pointer transition-colors duration-150",
+                        isBlock ? "bg-neutral-900" : "bg-white",
+                        isWordHighlighted && !isSelected && "bg-blue-50",
+                        isSelected && "bg-yellow-100"
+                      )}
+                      onClick={() => handleCellClick(r, c)}
+                    >
+                      {!isBlock && (
+                        <>
+                          {cellNumber && (
+                            <span className="absolute top-0.5 left-0.5 text-[6px] sm:text-[10px] leading-none font-normal text-gray-500">
+                              {cellNumber}
+                            </span>
+                          )}
+                          {isSelected ? (
+                            <input
+                              ref={(el) => {
+                                inputRefs.current[r][c] = el;
+                              }}
+                              className="w-full h-full text-center bg-transparent outline-none p-0 m-0 border-none"
+                              value={grid[r][c]}
+                              onChange={() => {}} // Handled by onKeyDown
+                              onKeyDown={(e) => handleKeyDown(e, r, c)}
+                              autoFocus
+                            />
+                          ) : (
+                            <span>{grid[r][c]}</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Clues */}
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+            <Card className="flex flex-col border-none shadow-none bg-transparent">
+              <CardHeader className="py-2 px-0">
+                <CardTitle className="text-sm font-bold uppercase text-muted-foreground">
+                  Horizontales
+                </CardTitle>
+              </CardHeader>
+              <ScrollArea className="h-[250px] sm:h-[450px] pr-4">
+                <div className="space-y-1">
+                  {data.ipuzData.clues.Across.map(([num, text]) => (
+                    <div
+                      key={`across-${num}`}
+                      className={cn(
+                        "text-sm p-2 rounded-md cursor-pointer hover:bg-neutral-100 transition-all duration-200 border border-transparent",
+                        currentClue?.number === String(num) &&
+                          direction === "across" &&
+                          "bg-blue-50 border-blue-100 font-medium text-blue-900 shadow-sm",
+                        isWordCorrect("across", String(num)) &&
+                          "line-through text-muted-foreground opacity-50 bg-transparent border-transparent shadow-none"
+                      )}
+                      onClick={() => {
+                        const detail = data.ipuzData.fromIpuz?.across[num];
+                        if (detail) {
+                          setSelectedCell({ r: detail.row, c: detail.col });
+                          setDirection("across");
+                        }
+                      }}
+                    >
+                      <span className="font-bold mr-2 text-xs text-neutral-500">
+                        {num}.
+                      </span>
+                      {text}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </Card>
+
+            <Card className="flex flex-col border-none shadow-none bg-transparent">
+              <CardHeader className="py-2 px-0">
+                <CardTitle className="text-sm font-bold uppercase text-muted-foreground">
+                  Verticales
+                </CardTitle>
+              </CardHeader>
+              <ScrollArea className="h-[250px] sm:h-[450px] pr-4">
+                <div className="space-y-1">
+                  {data.ipuzData.clues.Down.map(([num, text]) => (
+                    <div
+                      key={`down-${num}`}
+                      className={cn(
+                        "text-sm p-2 rounded-md cursor-pointer hover:bg-neutral-100 transition-all duration-200 border border-transparent",
+                        currentClue?.number === String(num) &&
+                          direction === "down" &&
+                          "bg-blue-50 border-blue-100 font-medium text-blue-900 shadow-sm",
+                        isWordCorrect("down", String(num)) &&
+                          "line-through text-muted-foreground opacity-50 bg-transparent border-transparent shadow-none"
+                      )}
+                      onClick={() => {
+                        const detail = data.ipuzData.fromIpuz?.down[num];
+                        if (detail) {
+                          setSelectedCell({ r: detail.row, c: detail.col });
+                          setDirection("down");
+                        }
+                      }}
+                    >
+                      <span className="font-bold mr-2 text-xs text-neutral-500">
+                        {num}.
+                      </span>
+                      {text}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </Card>
           </div>
         </div>
 
-        {/* Clues */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-          <Card className="flex flex-col border-none shadow-none bg-transparent">
-            <CardHeader className="py-2 px-0">
-              <CardTitle className="text-sm font-bold uppercase text-muted-foreground">
-                Horizontales
-              </CardTitle>
-            </CardHeader>
-            <ScrollArea className="h-[250px] sm:h-[450px] pr-4">
-              <div className="space-y-1">
-                {data.ipuzData.clues.Across.map(([num, text]) => (
-                  <div
-                    key={`across-${num}`}
-                    className={cn(
-                      "text-sm p-2 rounded-md cursor-pointer hover:bg-neutral-100 transition-all duration-200 border border-transparent",
-                      currentClue?.number === String(num) &&
-                        direction === "across" &&
-                        "bg-blue-50 border-blue-100 font-medium text-blue-900 shadow-sm",
-                      isWordCorrect("across", String(num)) &&
-                        "line-through text-muted-foreground opacity-50 bg-transparent border-transparent shadow-none"
-                    )}
-                    onClick={() => {
-                      const detail = data.ipuzData.fromIpuz?.across[num];
-                      if (detail) {
-                        setSelectedCell({ r: detail.row, c: detail.col });
-                        setDirection("across");
-                      }
-                    }}
-                  >
-                    <span className="font-bold mr-2 text-xs text-neutral-500">
-                      {num}.
-                    </span>
-                    {text}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </Card>
-
-          <Card className="flex flex-col border-none shadow-none bg-transparent">
-            <CardHeader className="py-2 px-0">
-              <CardTitle className="text-sm font-bold uppercase text-muted-foreground">
-                Verticales
-              </CardTitle>
-            </CardHeader>
-            <ScrollArea className="h-[250px] sm:h-[450px] pr-4">
-              <div className="space-y-1">
-                {data.ipuzData.clues.Down.map(([num, text]) => (
-                  <div
-                    key={`down-${num}`}
-                    className={cn(
-                      "text-sm p-2 rounded-md cursor-pointer hover:bg-neutral-100 transition-all duration-200 border border-transparent",
-                      currentClue?.number === String(num) &&
-                        direction === "down" &&
-                        "bg-blue-50 border-blue-100 font-medium text-blue-900 shadow-sm",
-                      isWordCorrect("down", String(num)) &&
-                        "line-through text-muted-foreground opacity-50 bg-transparent border-transparent shadow-none"
-                    )}
-                    onClick={() => {
-                      const detail = data.ipuzData.fromIpuz?.down[num];
-                      if (detail) {
-                        setSelectedCell({ r: detail.row, c: detail.col });
-                        setDirection("down");
-                      }
-                    }}
-                  >
-                    <span className="font-bold mr-2 text-xs text-neutral-500">
-                      {num}.
-                    </span>
-                    {text}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </Card>
+        {/* Sidebar */}
+        <div className="w-full xl:w-80 shrink-0 mt-8 xl:mt-0 pt-8 xl:pt-0 border-t xl:border-t-0 xl:border-l xl:pl-8 border-neutral-200">
+          <FriendsSidebar date={date} />
         </div>
       </div>
 
